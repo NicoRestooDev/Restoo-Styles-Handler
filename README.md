@@ -1,70 +1,73 @@
-# Backoffice de Estilos Dinámicos
+# Formulario de Configuración de Estilos
 
-Este pequeño proyecto tiene como objetivo crear un **formulario de administración** que permita configurar visualmente ciertos estilos para un sitio o landing page: color de fondo, imagen y tipografía.
+Este proyecto es un **prototipo de backoffice** para configurar visualmente los estilos de una landing page de manera interactiva.
+
+Por ahora es un **ejercicio sencillo**: todo está en HTML semántico, sin estilos CSS complejos, centrado en la funcionalidad.
 
 ---
 
 ## Objetivo
 
-El objetivo principal es ofrecer una **experiencia visual interactiva** para seleccionar:
+Crear un **formulario de administración** que permita configurar los siguientes elementos de manera dinámica:
 
-- **Color de fondo**: con picker nativo y soporte para pegado de valores hexadecimales.
+- **Color de fondo**: con picker nativo y un input de texto hexadecimal para facilitar la entrada directa de valores de diseño.
 - **Imagen de fondo**: subida desde el dispositivo.
-- **Tipografía**: selección de cualquier fuente disponible en la **Google Fonts API**, con preview en tiempo real y navegación por teclado.
+- **Tipografía**: selección de cualquier fuente disponible en la **Google Fonts API**, con previsualización en tiempo real y navegación por teclado.
 
-Toda esta información se prepara para enviarse al backend, guardarse y poder renderizar la landing page de manera dinámica.
+Eventualmente, los datos seleccionados se enviarán al **backend en Laravel** para persistirlos, y se reflejarán en una landing page de prueba.
 
 ---
 
 ## Estado actual
 
-Hasta ahora se ha implementado:
+Se ha desarrollado un formulario funcional con:
 
-- Formulario con campos de **color**, **imagen** y **tipografía**.
-- **Color picker** que sincroniza con un input de texto hexadecimal.
+- Campos para **color**, **imagen** y **fuente**.
+- Sin estilos CSS más allá de lo básico para funcionalidad.
+- **Color picker** sincronizado con input de texto hexadecimal.
 - **FontPicker** con:
   - Búsqueda por nombre.
   - Dropdown con hasta 5 resultados.
-  - Navegación por teclado (Arrow Up / Arrow Down).
-  - Selección con Enter.
-- **Inyección dinámica de Google Fonts** usando `<link>` en el `<head>` para previsualizar la fuente seleccionada.
-- Preparación de **FormData** para enviar color, imagen y fuente al backend.
+  - Navegación con teclado (Arrow Up / Arrow Down) y selección con Enter.
+  - Previsualización dinámica de la fuente mediante un `<link>` inyectado en el `<head>`.
+- Preparación de **FormData** para enviar color, imagen y fuente al backend (endpoint aún por desarrollar).
 
 ---
 
-## Problemas actuales / cosas por mejorar
+## Problemas y retos actuales
 
-- Algunas fuentes especiales (como **Noto Emoji**) no se renderizan correctamente con el enlace generado.
-- El manejo de `variants` y `weights` todavía no es completamente dinámico.
-- Estado inicial de fuente por defecto para evitar `null`.
-- Persistencia de las configuraciones en el backend vía API.
+- Algunas fuentes especiales (como **Noto Emoji**) todavía no se renderizan correctamente en la previsualización.
+- El manejo de `variants` y `weights` no es completamente dinámico.
+- Estado inicial de fuente por defecto aún por definir.
+- La persistencia en backend y la generación de la landing page todavía no están implementadas.
 
 ---
 
 ## Próximos pasos
 
-1. Revisar la **documentación de Google Fonts API** para cargar correctamente todas las variantes y subsets especiales.
-2. Mejorar la lógica de generación dinámica del enlace de la fuente, incluyendo weights y subsets según corresponda.
-3. Implementar la **persistencia en backend** (Laravel REST API):
-   - Endpoint `GET /api/settings` para obtener configuraciones.
-   - Endpoint `POST /api/settings` para crear o actualizar configuraciones.
-4. Añadir selector de **peso de fuente** dinámico y enviar esta información al backend.
-5. Mejorar la UI/UX del `FontPicker`, incluyendo:
+1. Implementar la **persistencia en Laravel**:
+   - `GET /api/settings` para obtener configuraciones.
+   - `POST /api/settings` para crear o actualizar configuraciones.
+2. Mejorar la carga dinámica de fuentes, incluyendo weights y subsets según sea necesario.
+3. Añadir selector de peso de fuente dinámico y enviar esta información al backend.
+4. Refinar la **UX del FontPicker**:
    - Mensaje cuando no hay resultados.
    - Scroll automático al mover el highlight con teclado.
-6. Posible integración con **localStorage** para previsualizaciones inmediatas sin backend.
+5. Integrar previsualización en la landing page a partir de los datos persistidos.
+6. Mejorar la interfaz visual más adelante (por ahora todo es HTML semántico).
 
 ---
 
-## Tecnologías
+## Tecnologías usadas
 
-- React con Hooks (`useState`, `useEffect`)
-- HTML5 `<input type="color">` y `<input type="file">`
-- Google Fonts API
-- FormData para envío de configuraciones al backend
+- **React** con Hooks (`useState`, `useEffect`)
+- **HTML5** (`input type="color"`, `input type="file"`)
+- **Google Fonts API**
+- **FormData** para envío de configuraciones al backend
+- **Laravel** (pendiente) para almacenamiento y consumo de settings.
 
 ---
 
-## Objetivo final
+## Resultado esperado
 
-Crear un **backoffice visual completo y responsivo** que permita a cualquier usuario configurar de manera rápida y visual los estilos de su landing page, con previsualización inmediata y persistencia en backend.
+Un **backoffice interactivo** donde se pueda configurar visualmente el color, la imagen y la tipografía de una landing page, con previsualización inmediata y persistencia futura en backend, utilizando un HTML semántico como prototipo inicial.
