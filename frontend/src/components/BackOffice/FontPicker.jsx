@@ -1,6 +1,6 @@
 import {useState, useEffect} from "react"
 
-export default function FontPicker({selectedFont, setSelectedFont}){
+export default function FontPicker({selectedFont, setSelectedFont, setError}){
     const [query, setQuery] = useState("")
     const [fonts, setFonts] = useState([])
     const [loading, setLoading] = useState(false)
@@ -11,6 +11,7 @@ export default function FontPicker({selectedFont, setSelectedFont}){
     const API_KEY= import.meta.env.VITE_GOOGLE_FONTS_API_KEY
     const MAX_RESULTS = 5
 
+    
 
     useEffect(()=>{
         const fetchFonts = async () => {
@@ -19,20 +20,30 @@ export default function FontPicker({selectedFont, setSelectedFont}){
             const data = await res.json()
             setFonts(data.items)
             setLoading(false)
-            // Buscar Noto Emoji usando data.items directamente
-    const notoEmoji = data.items.find(f => f.family === "Noto Emoji")
-    console.log("Noto Emoji object:", notoEmoji)
         }
         fetchFonts()
         
+
     },[])
+
+    
 
     const filteredFonts = fonts.filter(
         font => font.family.toLowerCase().includes(query.toLowerCase())
     )
+
+    useEffect(() => {
+        if(query && filteredFonts.length === 0){
+            setIsOpen(false)
+            setError(prev => ({...prev, font: "No se encontró la fuente"}))
+        } else {
+            setError(prev => ({...prev, font: ""}))
+        }
+    },[query])
+
     useEffect(() => {
             setHighlightedIndex(0)
-        }, [query])
+    }, [query])
 
     function handleFontClick(font){
         setSelectedFont(font)
@@ -98,7 +109,7 @@ export default function FontPicker({selectedFont, setSelectedFont}){
                         {filteredFonts.slice(0, MAX_RESULTS).map((font, index) => {
                             return(
                                 <div
-                                    key={font.family}
+                                    key={`${font.family}-${font.version}`}
                                     style={{padding:"5px", cursor:"pointer", background:index=== highlightedIndex ? "#eee" : "#fff"}}
                                     onClick={() => handleFontClick(font)}
                                 >
