@@ -15,6 +15,7 @@ export default function Form(){
         subsets: ["latin"]
     });
     const [submitResult, setSubmitResult] = useState("")
+    const [imagePreview, setImagePreview] = useState("")
 
     useEffect(() => {
         if(!selectedFont){
@@ -52,33 +53,34 @@ export default function Form(){
         let hasError = false
 
             // Validación de tipografía
-    if (!selectedFont) {
-        setError(prev => ({ ...prev, font: "Por favor selecciona una tipografía válida." }));
-        hasError = true;
-    }
+        if (!selectedFont) {
+            setError(prev => ({ ...prev, font: "Por favor selecciona una tipografía válida." }));
+            hasError = true;
+        }
 
-    // Validación de color
-    if (!color || !/^#([0-9A-F]{6})$/i.test(color)) {
-        setError(prev => ({ ...prev, color: "Color inválido. Debe ser un hexadecimal de 6 dígitos, ej: #ff0000." }));
-        hasError = true;
-    } else {
-        setError(prev => ({ ...prev, color: "" }));
-    }
+        // Validación de color
+        if (!color || !/^#([0-9A-F]{6})$/i.test(color)) {
+            setError(prev => ({ ...prev, color: "Color inválido. Debe ser un hexadecimal de 6 dígitos, ej: #ff0000." }));
+            hasError = true;
+        } else {
+            setError(prev => ({ ...prev, color: "" }));
+        }
 
-    // Validación de imagen
-    if (image && !image.type.startsWith("image/")) {
-        setError(prev => ({ ...prev, image: "Archivo no válido. Debe ser una imagen." }));
-        hasError = true;
-    } else {
-        setError(prev => ({ ...prev, image: "" }));
-    }
+        // Validación de imagen
+        if (image && !image.type.startsWith("image/")) {
+            setError(prev => ({ ...prev, image: "Archivo no válido. Debe ser una imagen." }));
+            hasError = true;
+        } else {
+            setError(prev => ({ ...prev, image: "" }));
+        }
 
-    if (hasError) return; // corta el submit si hay errores
+        if (hasError) return; // corta el submit si hay errores
 
         const stylesFormData = new FormData()
         stylesFormData.append("color", color)
         if(image) stylesFormData.append("image", image)
         if(selectedFont) stylesFormData.append("font", selectedFont.family)
+        
         
         try {
             const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
@@ -86,13 +88,11 @@ export default function Form(){
                 body: stylesFormData,
             })
 
+            const data = await res.json()
             if (!res.ok) {
-                const errorData = await res.json()
-                setError(errorData)
-                setSubmitResult("Error al guardar")
+                throw new Error("Error en la respuesta del servidor")
             }
 
-            const data = await res.json()
             setSubmitResult("Guardado exitosamente")
         } catch (err) {
             setSubmitResult("Error de red")
@@ -145,15 +145,27 @@ export default function Form(){
                             if (!file) return
                             if (!file.type.startsWith("image/")){
                                 setError(prev => ({...prev, image: "Archivo no válido. Por favor, selecciona una imagen."}))
+                                return
                             }
-                            
+                            if(file.size > 512*1024){
+                                setError(prev => ({...prev, image: "La imagen supera el tamaño máximo permitido (512kB)"}))
+                                return
+                            }
+                            setError(prev => ({...prev, image:""}))
                             setImage(file)
-                            setError(prev => ({...prev, image: ""}))
+                            
+                            if(imagePreview) {
+                                URL.revokeObjectURL(imageURL)
+                            }
+                            const imageURL = URL.createObjectURL(file)
+
+                            setImagePreview(imageURL)
                         }
                     }
                     >
                     </input>
                     {error.image && <p style={{color:"red"}}>{error.image}</p>}
+                    {imagePreview && <img src={imagePreview} style={{height:"200px", border:"1px solid black"}}/>}
                 </div>
 
                 <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont} setError={setError}/>

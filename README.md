@@ -1,73 +1,184 @@
-# Formulario de Configuración de Estilos
+# Restoo Styles Handler
 
-Este proyecto es un **prototipo de backoffice** para configurar visualmente los estilos de una landing page de manera interactiva.
+Proyecto de aprendizaje **React + Laravel** cuyo objetivo es construir un pequeño **backoffice de configuración visual** y una **landing page dinámica** que consume dicha configuración.
 
-Por ahora es un **ejercicio sencillo**: todo está en HTML semántico, sin estilos CSS complejos, centrado en la funcionalidad.
+El foco principal del proyecto es comprender el flujo completo:
+
+Frontend (React) → API (Laravel) → Base de datos + Storage → Frontend
 
 ---
 
 ## Objetivo
 
-Crear un **formulario de administración** que permita configurar los siguientes elementos de manera dinámica:
+Crear un formulario de administración que permita definir:
 
-- **Color de fondo**: con picker nativo y un input de texto hexadecimal para facilitar la entrada directa de valores de diseño.
-- **Imagen de fondo**: subida desde el dispositivo.
-- **Tipografía**: selección de cualquier fuente disponible en la **Google Fonts API**, con previsualización en tiempo real y navegación por teclado.
+- Color de fondo
+- Imagen de fondo
+- Tipografía (Google Fonts)
 
-Eventualmente, los datos seleccionados se enviarán al **backend en Laravel** para persistirlos, y se reflejarán en una landing page de prueba.
+Y persistir esta configuración en backend para que una landing page pueda consumirla y renderizarse dinámicamente.
+
+---
+
+## Arquitectura general
+
+- **Frontend**: React (Vite)
+- **Backend**: Laravel (API REST)
+- **Base de datos**: SQLite (por simplicidad)
+- **Storage**: Sistema de archivos local de Laravel
+
+Existe **una única configuración global de estilos**.
+
+El backend decide:
+
+- Si no existe configuración → se crea
+- Si ya existe → se actualiza
 
 ---
 
 ## Estado actual
 
-Se ha desarrollado un formulario funcional con:
+### Frontend
 
-- Campos para **color**, **imagen** y **fuente**.
-- Sin estilos CSS más allá de lo básico para funcionalidad.
-- **Color picker** sincronizado con input de texto hexadecimal.
-- **FontPicker** con:
-  - Búsqueda por nombre.
-  - Dropdown con hasta 5 resultados.
-  - Navegación con teclado (Arrow Up / Arrow Down) y selección con Enter.
-  - Previsualización dinámica de la fuente mediante un `<link>` inyectado en el `<head>`.
-- Preparación de **FormData** para enviar color, imagen y fuente al backend (endpoint aún por desarrollar).
+Formulario funcional con:
+
+- Selector de color (`input type="color"` + input hexadecimal)
+- Subida de imagen con:
+  - Validación de tipo
+  - Límite de tamaño (512KB)
+  - Previsualización local
+- Selector de fuente mediante Google Fonts API:
+  - Búsqueda
+  - Dropdown
+  - Navegación por teclado
+  - Previsualización en tiempo real mediante `<link>` dinámico
+- Envío de datos mediante `FormData` al backend
+
+Validaciones UX en frontend:
+
+- Color con formato hexadecimal válido
+- Imagen válida y menor de 512KB
+- Fuente seleccionada
 
 ---
 
-## Problemas y retos actuales
+### Backend
 
-- Algunas fuentes especiales (como **Noto Emoji**) todavía no se renderizan correctamente en la previsualización.
-- El manejo de `variants` y `weights` no es completamente dinámico.
-- Estado inicial de fuente por defecto aún por definir.
-- La persistencia en backend y la generación de la landing page todavía no están implementadas.
+API funcional en Laravel.
+
+#### Endpoints
+
+GET /api/styles  
+POST /api/styles
+
+---
+
+#### GET /api/styles
+
+Devuelve la configuración actual o valores por defecto si no existe:
+
+```json
+{
+  "exists": false,
+  "color": "#ffffff",
+  "font": "Roboto",
+  "image_url": null
+}
+```
+
+o
+
+```json
+{
+  "exists": true,
+  "color": "#aabbcc",
+  "font": "Roboto",
+  "image_url": "http://localhost/storage/styles/xxxx.png"
+}
+```
+
+---
+
+#### POST /api/styles
+
+Crea o actualiza la configuración.
+
+Validaciones:
+
+- color → required, formato hex
+- font → required, string, max 255
+- image →
+  - obligatoria solo la primera vez
+  - tipo imagen
+  - tamaño máximo 512KB
+
+Errores de validación (422):
+
+```json
+{
+  "message": "La imagen es obligatoria...",
+  "errors": {
+    "image": ["La imagen es obligatoria..."]
+  }
+}
+```
+
+Backend maneja:
+
+- Creación inicial
+- Actualización parcial
+- Guardado de imagen en storage/app/public/styles
+- Eliminación de imagen anterior al subir una nueva
+- Logging de errores internos
+
+---
+
+## Base de datos
+
+Tabla `styles`:
+
+- id
+- color (string, 7)
+- font (string)
+- image_path (string, nullable)
+- timestamps
+
+---
+
+## Flujo completo
+
+1. Usuario modifica formulario
+2. Frontend valida UX
+3. Se envía FormData
+4. Laravel valida definitivamente
+5. Se guarda en DB / Storage
+6. Se devuelve JSON
+7. Frontend muestra resultado
+
+---
+
+## Tecnologías
+
+- React
+- Vite
+- Laravel
+- SQLite
+- Google Fonts API
+- Fetch API
+- FormData
 
 ---
 
 ## Próximos pasos
 
-1. Implementar la **persistencia en Laravel**:
-   - `GET /api/settings` para obtener configuraciones.
-   - `POST /api/settings` para crear o actualizar configuraciones.
-2. Mejorar la carga dinámica de fuentes, incluyendo weights y subsets según sea necesario.
-3. Añadir selector de peso de fuente dinámico y enviar esta información al backend.
-4. Refinar la **UX del FontPicker**:
-   - Mensaje cuando no hay resultados.
-   - Scroll automático al mover el highlight con teclado.
-5. Integrar previsualización en la landing page a partir de los datos persistidos.
-6. Mejorar la interfaz visual más adelante (por ahora todo es HTML semántico).
+- Conectar completamente los errores 422 al estado del formulario
+- Crear landing page que consuma GET /api/styles
+- Persistir preview inicial cargando datos desde backend
+- Añadir selector de peso de fuente
+- Refinar UI
 
 ---
 
-## Tecnologías usadas
+## Nota
 
-- **React** con Hooks (`useState`, `useEffect`)
-- **HTML5** (`input type="color"`, `input type="file"`)
-- **Google Fonts API**
-- **FormData** para envío de configuraciones al backend
-- **Laravel** (pendiente) para almacenamiento y consumo de settings.
-
----
-
-## Resultado esperado
-
-Un **backoffice interactivo** donde se pueda configurar visualmente el color, la imagen y la tipografía de una landing page, con previsualización inmediata y persistencia futura en backend, utilizando un HTML semántico como prototipo inicial.
+Este proyecto prioriza el aprendizaje de arquitectura y flujo de datos sobre el diseño visual.
