@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Style;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
+
 
 
 class StyleController extends Controller
@@ -36,7 +35,7 @@ class StyleController extends Controller
 
     public function upsert(Request $request)
     {
-        try {
+
             $style = Style::first();
             $isCreate = !$style;
 
@@ -73,13 +72,13 @@ class StyleController extends Controller
                 ]);
 
                 return response() -> json([
-                    'message' => 'Style creado correctamente',
+                    'message' => 'Estilos creados correctamente',
                     'exists' => true,
                     'created' => true,
                     'color' => $style->color,
                     'font' => $style->font,
                     'image_url' => $style->image_path 
-                                            ? asset ('storage' . $style -> image_path )
+                                            ? asset ('storage/' . $style -> image_path )
                                             : null,
                 ], 201);
             }
@@ -96,31 +95,13 @@ class StyleController extends Controller
             $style->save();
 
             return response()->json([
-                'message' => 'Style actualizado correctamente.',
+                'message' => 'Estilos actualizado correctamente.',
                 'exists' => true,
                 'updated' => true,
                 'color' => $style->color,
                 'font'  => $style->font,
                 'image_url' => $style->image_path ? asset('storage/' . $style->image_path) : null,
             ]);
-
-        } catch (ValidationException $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
-
-        } catch (\Throwable $e) {
-            // Logging tipo producción (para investigar luego)
-            Log::error('Error en StyleController@upsert', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            // Respuesta genérica al frontend
-            return response()->json([
-                'message' => 'Error interno del servidor.',
-            ], 500);
         }
-    }
+    
 }

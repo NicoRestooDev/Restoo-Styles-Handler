@@ -182,3 +182,105 @@ Tabla `styles`:
 ## Nota
 
 Este proyecto prioriza el aprendizaje de arquitectura y flujo de datos sobre el diseño visual.
+
+---
+
+## 📅 Bitácora de desarrollo
+
+### Sesión – Rehidratación, sincronización de estado y robustez del formulario
+
+#### 🎯 Objetivos
+
+- Mejorar el flujo de validación del formulario.
+- Sincronizar correctamente la respuesta del backend tras POST.
+- Implementar rehidratación inicial con GET.
+- Corregir persistencia de tipografía e imagen.
+- Mejorar comportamiento del FontPicker.
+
+---
+
+#### ✅ Cambios realizados
+
+##### 1. Gestión avanzada de errores en frontend
+
+- Separación clara entre:
+  - `fieldErrors` → errores por campo (422 de Laravel)
+  - `formError` → errores globales (red, 500, etc.)
+- Implementado helper `mapLaravelFieldErrors` para adaptar la estructura `{ field: [msg] }` a `{ field: msg }`.
+- Limpieza automática de errores al modificar un campo.
+- Estado `isSubmitting` para evitar dobles envíos.
+
+---
+
+##### 2. Sincronización tras POST
+
+El backend devuelve ahora:
+
+- `color`
+- `font`
+- `image_url`
+
+El frontend actualiza el estado tras guardar:
+
+- `setColor(data.color)`
+- `setSelectedFont(...)`
+- `setImagePreview(data.image_url)`
+
+Esto evita hacer un segundo GET tras cada POST.
+
+---
+
+##### 3. Rehidratación inicial
+
+Al montar el formulario:
+
+- Se hace `GET /api/styles`
+- Se cargan:
+  - color persistido
+  - fuente persistida
+  - imagen persistida
+
+Esto permite que al recargar la página el formulario muestre el estado real guardado.
+
+---
+
+##### 4. Corrección de persistencia de tipografía
+
+Problema detectado:
+
+- El nombre de la fuente se cargaba, pero las previews no cambiaban.
+
+Solución:
+
+- Simplificada carga dinámica de Google Fonts (sin depender de variants).
+- Al rehidratar, se resetea el objeto `selectedFont`.
+- El input del buscador sincroniza su valor con `selectedFont.family`.
+
+---
+
+##### 5. Mejoras en FontPicker
+
+- Estados claros:
+  - cargando
+  - error de API
+  - sin resultados
+- Dropdown muestra mensajes contextuales.
+- Navegación por teclado.
+- Separación entre:
+  - estado interno del buscador
+  - validación del formulario
+
+---
+
+#### 🧠 Aprendizajes clave
+
+- Diferencia entre:
+  - estado React en memoria
+  - persistencia backend
+  - rehidratación al montar
+- Flujo real de validación en Laravel: request → validate → 422
+- Sincronización frontend/backend sin llamadas redundantes.
+- Separación de responsabilidades entre componentes.
+- Manejo correcto de recursos externos (Google Fonts).
+
+---

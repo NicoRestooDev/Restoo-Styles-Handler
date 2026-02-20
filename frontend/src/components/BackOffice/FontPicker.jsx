@@ -1,29 +1,48 @@
 import {useState, useEffect} from "react"
 
-export default function FontPicker({selectedFont, setSelectedFont, setError}){
+export default function FontPicker({selectedFont, setSelectedFont, onValidSelection}){
     const [query, setQuery] = useState("")
     const [fonts, setFonts] = useState([])
     const [loading, setLoading] = useState(false)
     const [highlightedIndex, setHighlightedIndex] = useState(0)
+    const [fetchError, setFetchError] = useState("")
 
     const [isOpen, setIsOpen] = useState(false)
 
     const API_KEY= import.meta.env.VITE_GOOGLE_FONTS_API_KEY
     const MAX_RESULTS = 5
 
+
+    useEffect(() => {
+        if(selectedFont?.family) setQuery(selectedFont.family)
+    }, [selectedFont?.family])
     
 
     useEffect(()=>{
         const fetchFonts = async () => {
             setLoading(true)
-            const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key=${API_KEY}`)
-            const data = await res.json()
-            setFonts(data.items)
-            setLoading(false)
+            setFetchError("")
+            try {
+                const res = await fetch(`https://www.googleapis.com/webfonts/v1/webfonts?key=${API_KEY}`)
+                if(!res.ok){
+                    setFetchError("Error al cargar Google Fonts")
+                    setFonts([])
+                    return
+                }
+
+                const data = await res.json()
+                setFonts(Array.isArray(data.items) ? data.items : [])
+
+            } catch (error) {
+                setFetchError("Error de comunicación con Google Fonts")
+                setFonts([])
+            }finally {
+                setLoading(false)
+            }
         }
+
         fetchFonts()
         
-
     },[])
 
     
@@ -32,14 +51,7 @@ export default function FontPicker({selectedFont, setSelectedFont, setError}){
         font => font.family.toLowerCase().includes(query.toLowerCase())
     )
 
-    useEffect(() => {
-        if(query && filteredFonts.length === 0){
-            setIsOpen(false)
-            setError(prev => ({...prev, font: "No se encontró la fuente"}))
-        } else {
-            setError(prev => ({...prev, font: ""}))
-        }
-    },[query])
+    
 
     useEffect(() => {
             setHighlightedIndex(0)
@@ -49,6 +61,7 @@ export default function FontPicker({selectedFont, setSelectedFont, setError}){
         setSelectedFont(font)
         setQuery(font.family)
         setIsOpen(false)
+        onValidSelection?.()
     }
   
     return(
@@ -106,7 +119,14 @@ export default function FontPicker({selectedFont, setSelectedFont, setError}){
                         zIndex:1000
                     }}
                     >
-                        {filteredFonts.slice(0, MAX_RESULTS).map((font, index) => {
+                        {loading && <p>Cargando...</p>}
+
+                        {!loading && fetchError && <p style={{color:"red"}}>{fetchError}</p>}
+
+                        {!loading && !fetchError && query && filteredFonts.length === 0 && (
+                            <p style={{color:"gray"}}>No se encontró ningún resultado</p>
+                        )}
+                        {!loading && !fetchError && filteredFonts.slice(0, MAX_RESULTS).map((font, index) => {
                             return(
                                 <div
                                     key={`${font.family}-${font.version}`}
@@ -119,7 +139,7 @@ export default function FontPicker({selectedFont, setSelectedFont, setError}){
                             }
                         )}
                     </div>
-            )}
-        </div>
+                    )}
+                 </div>
     )
 }

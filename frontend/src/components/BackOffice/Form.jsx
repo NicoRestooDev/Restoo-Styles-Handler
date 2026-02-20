@@ -4,25 +4,66 @@ import FontPicker from "./FontPicker.jsx"
 export default function Form(){
     const [color, setColor] = useState("#ffffff")
     const [image, setImage] = useState(null)
-    const [error, setError] = useState({
-        color:"",
-        image:"",
-        font:""
-    })
+    const [fieldErrors, setFieldErrors] = useState({}) //{color: "...", image: "...", font: "..."}
+    const [formError, setFormError] = useState(null) // string | null
+    const [submitResult, setSubmitResult] = useState(null) // string | null
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isLoading, setIsLoading] = useState(true)
     const [selectedFont, setSelectedFont] = useState({
         family: "Roboto",
         variants: ["100","300","400","500","700","900"],
         subsets: ["latin"]
     });
-    const [submitResult, setSubmitResult] = useState("")
+    
     const [imagePreview, setImagePreview] = useState("")
+
+        useEffect(() => {
+        const loadStyles = async () => {
+            setIsLoading(true)
+            setFormError(null)
+
+            try {
+                const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
+                    headers: {Accept: "application/json"},
+                })
+
+                const data = await res.json().catch(() => ({}))
+
+                if (!res.ok) {
+                    setFormError(data.message ?? "Error al cargar estilos")
+                    return
+                }
+
+                setColor(data.color || "#ffffff")
+
+                if (data.font){
+                    setSelectedFont({
+                        family: data.font ?? "Roboto",
+                        variants: ["400"],
+                        subsets: ["latin"]
+                    });
+
+                }
+
+                setImagePreview(data.image_url || "")
+                setImage(null)
+            }catch (error){
+                setFormError("No se pudo cargar la configuración")
+            }finally {
+                setIsLoading(false)
+            }
+            
+        }
+
+        loadStyles()
+    }, [])
 
     useEffect(() => {
         if(!selectedFont){
-        setError(prev => ({...prev, font: "Por favor selecciona una tipografía válida."}))
+        setFieldErrors(prev => ({...prev, font: "Por favor selecciona una tipografía válida."}))
         return
         } else {
-        setError(prev => ({...prev, font: ""}))
+        setFieldErrors(prev => ({...prev, font: ""}))
         }
 
         const link = document.createElement("link")
@@ -48,54 +89,95 @@ export default function Form(){
         }
     }, [selectedFont])
 
+    // AQUÍ IRAN LOS HELPERS mapLaravelFieldErrors y clearFieldErrors
+    const mapLaravelFieldErrors = (errorsObj) => {
+        // errorsObj = { color: ["msg], image :["msg1", "msg2"]}
+        if(!errorsObj || typeof errorsObj !== "object") return {}
+        return Object.fromEntries(
+            Object.entries(errorsObj).map(([k, arr]) => [k, Array.isArray(arr) ? arr[0] : String(arr)])
+        )
+    }
+
+    const clearFieldErrors = (field) => {
+        setFieldErrors (prev => {
+            if(!prev?.[field]) return prev
+            const next = {...prev}
+            delete next[field]
+            return next
+        })
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        let hasError = false
+        
+        //1. Reset de mensajes (cada intento es como una partida nueva)
+        setSubmitResult (null)
+        setFormError (null)
+        setFieldErrors ({})
 
-            // Validación de tipografía
-        if (!selectedFont) {
-            setError(prev => ({ ...prev, font: "Por favor selecciona una tipografía válida." }));
-            hasError = true;
+        //2. Validación mínima frontend
+        const localErrors = {}
+        if(!selectedFont?.family) localErrors.font = "Por favor, selecciona una tipografía válida."
+        if(!color || !/^#[0-9A-Fa-f]{6}$/.test(color)) localErrors.color = "Color inválido. Ej: #ff0000"
+
+        if(image){
+            if(!image.type.startsWith("image/")) localErrors.image = "Archivo no válido. Por favor, selecciona una imagen."
+            if(image.size > 512*1024) localErrors.image = "La imagen supera el tamaño máximo permitido (512kB)"
         }
 
-        // Validación de color
-        if (!color || !/^#([0-9A-F]{6})$/i.test(color)) {
-            setError(prev => ({ ...prev, color: "Color inválido. Debe ser un hexadecimal de 6 dígitos, ej: #ff0000." }));
-            hasError = true;
-        } else {
-            setError(prev => ({ ...prev, color: "" }));
+        if(Object.keys(localErrors).length > 0){
+            setFieldErrors(localErrors)
+            return
         }
 
-        // Validación de imagen
-        if (image && !image.type.startsWith("image/")) {
-            setError(prev => ({ ...prev, image: "Archivo no válido. Debe ser una imagen." }));
-            hasError = true;
-        } else {
-            setError(prev => ({ ...prev, image: "" }));
-        }
-
-        if (hasError) return; // corta el submit si hay errores
-
+        // 3. Construir formData
         const stylesFormData = new FormData()
         stylesFormData.append("color", color)
         if(image) stylesFormData.append("image", image)
         if(selectedFont) stylesFormData.append("font", selectedFont.family)
         
-        
+        //4. Submit
+        setIsSubmitting(true)
+        console.log("IMAGE STATE", image);
+        console.log("FORMDATA image", stylesFormData.get("image"));
         try {
             const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
                 method: "POST",
+                headers: {
+                    Accept: "application/json",
+                },
                 body: stylesFormData,
             })
 
-            const data = await res.json()
-            if (!res.ok) {
-                throw new Error("Error en la respuesta del servidor")
+            const data = await res.json().catch(() => ({}))
+            
+            if (res.status === 422) {
+                setFieldErrors(mapLaravelFieldErrors(data.errors))
+                return
             }
 
-            setSubmitResult("Guardado exitosamente")
+            if (!res.ok) {
+                setFormError(data.message ?? "Error interno del servidor")
+                return
+            }
+
+            setSubmitResult(data.message ?? "¡Estilos guardados exitosamente!")
+
+            if(data.color) setColor(data.color)
+            if(data.font){
+                setSelectedFont(prev => ({...prev, family: data.font}))
+            }
+            if(data.image_url) {
+                setImagePreview((prev) => {
+                    if(prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
+                    return data.image_url
+                })
+                setImage(null)
+            }
         } catch (err) {
             setSubmitResult("Error de red")
+        } finally {
+            setIsSubmitting(false)
         }
         
     }
@@ -103,11 +185,10 @@ export default function Form(){
     const handleTextColorChange = (e) => {
         const value = e.target.value
         setColor(value)
-        if (/^#([0-9A-F]{5})$/i.test(value)) {
-            setColor(value)
-            setError(prev => ({...prev, color: ""}))
-        } else {
-            setError(prev => ({...prev, color: "Color inválido. Debe ser un código hexadecimal de 6 dígitos, por ejemplo: #ff0000"}))
+        clearFieldErrors("color")
+
+        if(value && !/^#[0-9A-Fa-f]{6}$/.test(value)){
+            setFieldErrors((prev) => ({...prev, color: "Color inválido. Ej: #ff0000"}))
         }
     }
 
@@ -115,13 +196,17 @@ export default function Form(){
 
         return(
             <form onSubmit={handleSubmit}>
+                {formError && <p style={{color:"red"}}>{formError}</p>}
                 <h1>This is a form</h1>
                 <div>
                     <label>Color de fondo:</label>
                     <input
                         type="color"
                         value={color}
-                        onChange={(e)=>setColor(e.target.value)}
+                        onChange={(e)=>{
+                            setColor(e.target.value)
+                            clearFieldErrors("color")
+                        }}
                     >
                     </input>
                     <input 
@@ -131,7 +216,7 @@ export default function Form(){
                         onChange={handleTextColorChange}
                     >
                     </input>
-                    {error.color && <p style={{color:"red"}}>{error.color}</p>}
+                    {fieldErrors.color && <p style={{color:"red"}}>{fieldErrors.color}</p>}
                 </div>
                 
                 <div>
@@ -143,35 +228,40 @@ export default function Form(){
                             const file = e.target.files[0]
 
                             if (!file) return
+                            clearFieldErrors("image")
+
                             if (!file.type.startsWith("image/")){
-                                setError(prev => ({...prev, image: "Archivo no válido. Por favor, selecciona una imagen."}))
+                                setFieldErrors(prev => ({...prev, image: "Archivo no válido. Por favor, selecciona una imagen."}))
+                                setImage(null)
+                                setImagePreview(null)
                                 return
                             }
+
                             if(file.size > 512*1024){
-                                setError(prev => ({...prev, image: "La imagen supera el tamaño máximo permitido (512kB)"}))
+                                setFieldErrors(prev => ({...prev, image: "La imagen supera el tamaño máximo permitido (512kB)"}))
+                                setImage(null)
+                                setImagePreview(null)
                                 return
                             }
-                            setError(prev => ({...prev, image:""}))
+
                             setImage(file)
                             
-                            if(imagePreview) {
-                                URL.revokeObjectURL(imageURL)
-                            }
-                            const imageURL = URL.createObjectURL(file)
-
-                            setImagePreview(imageURL)
+                            setImagePreview((prev) => {
+                                if(prev) URL.revokeObjectURL(prev)
+                                return URL.createObjectURL(file)
+                            })
                         }
                     }
                     >
                     </input>
-                    {error.image && <p style={{color:"red"}}>{error.image}</p>}
+                    {fieldErrors.image && <p style={{color:"red"}}>{fieldErrors.image}</p>}
                     {imagePreview && <img src={imagePreview} style={{height:"200px", border:"1px solid black"}}/>}
                 </div>
 
-                <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont} setError={setError}/>
-                {error.font && <p style={{color:"red"}}>{error.font}</p>}
+                <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont}/>
+                {fieldErrors.font && <p style={{color:"red"}}>{fieldErrors.font}</p>}
                 <button type="submit">Botong</button>
-                {submitResult && <p>{submitResult}</p>}
+                {submitResult && <p style={{color:"green"}}>{submitResult}</p>}
             </form>
         )
 }
