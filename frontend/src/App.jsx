@@ -10,9 +10,8 @@ export default function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/landing" element={<Landing />} />
-        <Route path="/backoffice" element={<BackOffice />} />
-        <Route path="/" element={<Navigate to="/backoffice"/>} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/myrestoo/edit/landing" element={<BackOffice />} />
         <Route path="*" element={<NotFound/>}/>
       </Routes>
     </Router>

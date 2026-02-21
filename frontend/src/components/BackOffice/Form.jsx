@@ -1,5 +1,7 @@
 import {useState, useEffect} from "react"
 import FontPicker from "./FontPicker.jsx"
+import {Link} from "react-router-dom"
+
 
 export default function Form(){
     const [color, setColor] = useState("#ffffff")
@@ -15,46 +17,57 @@ export default function Form(){
         subsets: ["latin"]
     });
     
+    // AQUÍ IRAN LOS HELPERS mapLaravelFieldErrors y clearFieldErrors
+    const mapLaravelFieldErrors = (errorsObj) => {
+        // errorsObj = { color: ["msg], image :["msg1", "msg2"]}
+        if(!errorsObj || typeof errorsObj !== "object") return {}
+        return Object.fromEntries(
+            Object.entries(errorsObj).map(([k, arr]) => [k, Array.isArray(arr) ? arr[0] : String(arr)])
+        )
+    }
+
+    const clearFieldErrors = (field) => {
+        setFieldErrors (prev => {
+            if (!prev || !(field in prev)) return prev;
+            const next = {...prev}
+            delete next[field]
+            return next
+        })
+    }
+
     const [imagePreview, setImagePreview] = useState("")
 
-        useEffect(() => {
-        const loadStyles = async () => {
-            setIsLoading(true)
-            setFormError(null)
-
-            try {
-                const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
-                    headers: {Accept: "application/json"},
-                })
-
-                const data = await res.json().catch(() => ({}))
-
-                if (!res.ok) {
-                    setFormError(data.message ?? "Error al cargar estilos")
-                    return
-                }
-
-                setColor(data.color || "#ffffff")
-
-                if (data.font){
-                    setSelectedFont({
-                        family: data.font ?? "Roboto",
-                        variants: ["400"],
-                        subsets: ["latin"]
-                    });
-
-                }
-
-                setImagePreview(data.image_url || "")
-                setImage(null)
-            }catch (error){
-                setFormError("No se pudo cargar la configuración")
-            }finally {
-                setIsLoading(false)
+    const loadStyles = async () => {
+        setIsLoading(true)
+        setFormError(null)
+        try {
+            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
+                headers: {Accept: "application/json"},
+            })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                setFormError(data.message ?? "Error al cargar estilos")
+                return
             }
-            
+            setColor(data.color || "#ffffff")
+            if (data.font){
+                setSelectedFont({
+                    family: data.font ?? "Roboto",
+                    variants: ["400"],
+                    subsets: ["latin"]
+                });
+            }
+            setImagePreview(data.image_url || "")
+            setImage(null)
+        }catch (error){
+            setFormError("No se pudo cargar la configuración")
+        }finally {
+            setIsLoading(false)
+        }
+        
         }
 
+    useEffect(() => {
         loadStyles()
     }, [])
 
@@ -63,7 +76,7 @@ export default function Form(){
         setFieldErrors(prev => ({...prev, font: "Por favor selecciona una tipografía válida."}))
         return
         } else {
-        setFieldErrors(prev => ({...prev, font: ""}))
+        clearFieldErrors("font");
         }
 
         const link = document.createElement("link")
@@ -89,23 +102,7 @@ export default function Form(){
         }
     }, [selectedFont])
 
-    // AQUÍ IRAN LOS HELPERS mapLaravelFieldErrors y clearFieldErrors
-    const mapLaravelFieldErrors = (errorsObj) => {
-        // errorsObj = { color: ["msg], image :["msg1", "msg2"]}
-        if(!errorsObj || typeof errorsObj !== "object") return {}
-        return Object.fromEntries(
-            Object.entries(errorsObj).map(([k, arr]) => [k, Array.isArray(arr) ? arr[0] : String(arr)])
-        )
-    }
-
-    const clearFieldErrors = (field) => {
-        setFieldErrors (prev => {
-            if(!prev?.[field]) return prev
-            const next = {...prev}
-            delete next[field]
-            return next
-        })
-    }
+    
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -129,7 +126,8 @@ export default function Form(){
             setFieldErrors(localErrors)
             return
         }
-
+        
+        console.log("Submitting with image =", image?.name, image?.size);
         // 3. Construir formData
         const stylesFormData = new FormData()
         stylesFormData.append("color", color)
@@ -192,12 +190,19 @@ export default function Form(){
         }
     }
 
-    
+    const handleCancelButton = () => {
+        console.log("rehidration")
+        loadStyles() // recarga la configuración desde el backend, descartando cambios no guardados
+    }
 
         return(
             <form onSubmit={handleSubmit}>
+                <header>
+                    <button type="button" onClick={handleCancelButton}>Cancelar</button>
+                    <button type="submit">Guardar</button>
+                </header>
+                
                 {formError && <p style={{color:"red"}}>{formError}</p>}
-                <h1>This is a form</h1>
                 <div>
                     <label>Color de fondo:</label>
                     <input
@@ -228,26 +233,29 @@ export default function Form(){
                             const file = e.target.files[0]
 
                             if (!file) return
-                            clearFieldErrors("image")
+                            
 
                             if (!file.type.startsWith("image/")){
                                 setFieldErrors(prev => ({...prev, image: "Archivo no válido. Por favor, selecciona una imagen."}))
                                 setImage(null)
-                                setImagePreview(null)
+                                setImagePreview("")
+                                e.target.value = ""; 
                                 return
                             }
 
                             if(file.size > 512*1024){
                                 setFieldErrors(prev => ({...prev, image: "La imagen supera el tamaño máximo permitido (512kB)"}))
                                 setImage(null)
-                                setImagePreview(null)
+                                setImagePreview("")
+                                e.target.value = ""; 
                                 return
                             }
+                            clearFieldErrors("image")
 
                             setImage(file)
-                            
+                            console.log("After valid select, fieldErrors.image =", fieldErrors.image);
                             setImagePreview((prev) => {
-                                if(prev) URL.revokeObjectURL(prev)
+                                if(prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
                                 return URL.createObjectURL(file)
                             })
                         }
@@ -260,7 +268,10 @@ export default function Form(){
 
                 <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont}/>
                 {fieldErrors.font && <p style={{color:"red"}}>{fieldErrors.font}</p>}
-                <button type="submit">Botong</button>
+                <footer>
+                    <button type="button" onClick={handleCancelButton}>Cancelar</button>
+                    <button type="submit">{isSubmitting ? "Guardando..." : "Guardar"}</button>
+                </footer>
                 {submitResult && <p style={{color:"green"}}>{submitResult}</p>}
             </form>
         )

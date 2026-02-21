@@ -1,16 +1,52 @@
-# React + Vite
+# ✅ Frontend – Task List (Restoo Styles)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🔴 Arquitectura (alto impacto)
 
-Currently, two official plugins are available:
+| Hecho | Tarea                                                  | Notas                        |
+| ----- | ------------------------------------------------------ | ---------------------------- |
+| ⬜    | Consumir sidebar desde backend (`GET /api/navigation`) | Eliminar sidebar hardcodeado |
+| ⬜    | Adaptar sidebar a roles (Admin / Camarero)             | UI reacciona a datos         |
+| ⬜    | Definir convivencia Blade + React                      | Qué vistas son SPA           |
+| ⬜    | Separar config dev/prod (env)                          | API base URL, CORS           |
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## 🟠 Arquitectura media
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+| Hecho | Tarea                                          | Notas                       |
+| ----- | ---------------------------------------------- | --------------------------- |
+| ⬜    | Refactor de `Form.jsx` (extraer hooks/helpers) | Reducir tamaño              |
+| ⬜    | Contexto global de estilos                     | Cache + rehidratación       |
+| ⬜    | Sistema global de errores                      | Wrapper fetch / interceptor |
+| ⬜    | Decidir sistema CSS                            | Plano / Modules / Tailwind  |
+| ⬜    | Sistema de design tokens                       | Colores, tipografía, etc    |
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🟡 UX / UI
+
+| Hecho | Tarea                            | Notas           |
+| ----- | -------------------------------- | --------------- |
+| ⬜    | Usar `isLoading` correctamente   | Bloquear UI     |
+| ⬜    | Spinner reutilizable             | Componente      |
+| ⬜    | Pulir error imagen >512kb        | Limpieza estado |
+| ⬜    | Opción borrar imagen             | Backend + UI    |
+| ⬜    | Confirmación al cancelar cambios | Modal           |
+
+---
+
+## 🟢 Testing
+
+| Hecho | Tarea                         | Notas          |
+| ----- | ----------------------------- | -------------- |
+| ⬜    | Tests de componentes (Vitest) | Form, Landing  |
+| ⬜    | Tests de hooks                | useStyles, etc |
+
+---
+
+## 🟣 Deploy
+
+| Hecho | Tarea                        | Notas   |
+| ----- | ---------------------------- | ------- |
+| ⬜    | Build producción frontend    | Vite    |
+| ⬜    | Variables entorno producción | API URL |
