@@ -1,278 +1,375 @@
-import {useState, useEffect} from "react"
-import FontPicker from "./FontPicker.jsx"
-import {Link} from "react-router-dom"
+import { useState, useEffect } from "react";
+import FontPicker from "./FontPicker.jsx";
+import { Link } from "react-router-dom";
 
+export default function Form() {
+  const [color, setColor] = useState("#ffffff");
+  const [image, setImage] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({}); //{color: "...", image: "...", font: "..."}
+  const [formError, setFormError] = useState(null); // string | null
+  const [submitResult, setSubmitResult] = useState(null); // string | null
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedFont, setSelectedFont] = useState({
+    family: "Roboto",
+    variants: ["100", "300", "400", "500", "700", "900"],
+    subsets: ["latin"],
+  });
 
-export default function Form(){
-    const [color, setColor] = useState("#ffffff")
-    const [image, setImage] = useState(null)
-    const [fieldErrors, setFieldErrors] = useState({}) //{color: "...", image: "...", font: "..."}
-    const [formError, setFormError] = useState(null) // string | null
-    const [submitResult, setSubmitResult] = useState(null) // string | null
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [isLoading, setIsLoading] = useState(true)
-    const [selectedFont, setSelectedFont] = useState({
-        family: "Roboto",
-        variants: ["100","300","400","500","700","900"],
-        subsets: ["latin"]
+  const MIN_SUBMIT_TIME = 600; // ms
+
+  const mapLaravelFieldErrors = (errorsObj) => {
+    // errorsObj = { color: ["msg], image :["msg1", "msg2"]}
+    if (!errorsObj || typeof errorsObj !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(errorsObj).map(([k, arr]) => [k, Array.isArray(arr) ? arr[0] : String(arr)])
+    );
+  };
+
+  const clearFieldErrors = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev || !(field in prev)) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
     });
-    
-    // AQUÍ IRAN LOS HELPERS mapLaravelFieldErrors y clearFieldErrors
-    const mapLaravelFieldErrors = (errorsObj) => {
-        // errorsObj = { color: ["msg], image :["msg1", "msg2"]}
-        if(!errorsObj || typeof errorsObj !== "object") return {}
-        return Object.fromEntries(
-            Object.entries(errorsObj).map(([k, arr]) => [k, Array.isArray(arr) ? arr[0] : String(arr)])
-        )
+  };
+
+  const [imagePreview, setImagePreview] = useState("");
+
+  const loadStyles = async () => {
+    setIsLoading(true);
+    setFormError(null);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFormError(data.message ?? "Error al cargar estilos");
+        return;
+      }
+      setColor(data.color || "#ffffff");
+      if (data.font && data.font !== selectedFont.family) {
+        setSelectedFont({
+          family: data.font ?? "Roboto",
+          variants: ["400"],
+          subsets: ["latin"],
+        });
+      }
+      setImagePreview(data.image_url || "");
+      setImage(null);
+    } catch (error) {
+      setFormError("No se pudo cargar la configuración");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStyles();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedFont) {
+      setFieldErrors((prev) => ({ ...prev, font: "Por favor selecciona una tipografía válida." }));
+      return;
+    } else {
+      clearFieldErrors("font");
     }
 
-    const clearFieldErrors = (field) => {
-        setFieldErrors (prev => {
-            if (!prev || !(field in prev)) return prev;
-            const next = {...prev}
-            delete next[field]
-            return next
-        })
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    if (selectedFont.variants && selectedFont.variants.length > 1) {
+      const variants = selectedFont.variants.find((v) => /^\d+$/.test(v)) || "400";
+      link.href = `https://fonts.googleapis.com/css2?family=${selectedFont.family.replaceAll(
+        " ",
+        "+"
+      )}:wght@${variants}&display=swap`;
+    } else {
+      link.href = `https://fonts.googleapis.com/css2?family=${selectedFont.family.replaceAll(
+        " ",
+        "+"
+      )}&display=swap`;
     }
 
-    const [imagePreview, setImagePreview] = useState("")
+    link.id = "dynamic-font";
 
-    const loadStyles = async () => {
-        setIsLoading(true)
-        setFormError(null)
-        try {
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
-                headers: {Accept: "application/json"},
-            })
-            const data = await res.json().catch(() => ({}))
-            if (!res.ok) {
-                setFormError(data.message ?? "Error al cargar estilos")
-                return
-            }
-            setColor(data.color || "#ffffff")
-            if (data.font){
-                setSelectedFont({
-                    family: data.font ?? "Roboto",
-                    variants: ["400"],
-                    subsets: ["latin"]
-                });
-            }
-            setImagePreview(data.image_url || "")
-            setImage(null)
-        }catch (error){
-            setFormError("No se pudo cargar la configuración")
-        }finally {
-            setIsLoading(false)
-        }
-        
-        }
-
-    useEffect(() => {
-        loadStyles()
-    }, [])
-
-    useEffect(() => {
-        if(!selectedFont){
-        setFieldErrors(prev => ({...prev, font: "Por favor selecciona una tipografía válida."}))
-        return
-        } else {
-        clearFieldErrors("font");
-        }
-
-        const link = document.createElement("link")
-        link.rel="stylesheet"
-        if(selectedFont.variants && selectedFont.variants.length > 1){
-            const variants = selectedFont.variants.find(v => /^\d+$/.test(v)) || "400"
-            link.href=`https://fonts.googleapis.com/css2?family=${selectedFont.family.replaceAll(" ","+")}:wght@${variants}&display=swap`
-        } else {
-            link.href=`https://fonts.googleapis.com/css2?family=${selectedFont.family.replaceAll(" ", "+")}&display=swap`
-        }
-        
-        link.id="dynamic-font"
-
-        const existingLink = document.getElementById("dynamic-font")
-        if(existingLink){
-            existingLink.remove()
-        }
-
-        document.head.appendChild(link)
-
-        return () => {
-            link.remove()
-        }
-    }, [selectedFont])
-
-    
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        
-        //1. Reset de mensajes (cada intento es como una partida nueva)
-        setSubmitResult (null)
-        setFormError (null)
-        setFieldErrors ({})
-
-        //2. Validación mínima frontend
-        const localErrors = {}
-        if(!selectedFont?.family) localErrors.font = "Por favor, selecciona una tipografía válida."
-        if(!color || !/^#[0-9A-Fa-f]{6}$/.test(color)) localErrors.color = "Color inválido. Ej: #ff0000"
-
-        if(image){
-            if(!image.type.startsWith("image/")) localErrors.image = "Archivo no válido. Por favor, selecciona una imagen."
-            if(image.size > 512*1024) localErrors.image = "La imagen supera el tamaño máximo permitido (512kB)"
-        }
-
-        if(Object.keys(localErrors).length > 0){
-            setFieldErrors(localErrors)
-            return
-        }
-        
-        console.log("Submitting with image =", image?.name, image?.size);
-        // 3. Construir formData
-        const stylesFormData = new FormData()
-        stylesFormData.append("color", color)
-        if(image) stylesFormData.append("image", image)
-        if(selectedFont) stylesFormData.append("font", selectedFont.family)
-        
-        //4. Submit
-        setIsSubmitting(true)
-        console.log("IMAGE STATE", image);
-        console.log("FORMDATA image", stylesFormData.get("image"));
-        try {
-            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
-                method: "POST",
-                headers: {
-                    Accept: "application/json",
-                },
-                body: stylesFormData,
-            })
-
-            const data = await res.json().catch(() => ({}))
-            
-            if (res.status === 422) {
-                setFieldErrors(mapLaravelFieldErrors(data.errors))
-                return
-            }
-
-            if (!res.ok) {
-                setFormError(data.message ?? "Error interno del servidor")
-                return
-            }
-
-            setSubmitResult(data.message ?? "¡Estilos guardados exitosamente!")
-
-            if(data.color) setColor(data.color)
-            if(data.font){
-                setSelectedFont(prev => ({...prev, family: data.font}))
-            }
-            if(data.image_url) {
-                setImagePreview((prev) => {
-                    if(prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
-                    return data.image_url
-                })
-                setImage(null)
-            }
-        } catch (err) {
-            setSubmitResult("Error de red")
-        } finally {
-            setIsSubmitting(false)
-        }
-        
+    const existingLink = document.getElementById("dynamic-font");
+    if (existingLink) {
+      existingLink.remove();
     }
 
-    const handleTextColorChange = (e) => {
-        const value = e.target.value
-        setColor(value)
-        clearFieldErrors("color")
+    document.head.appendChild(link);
 
-        if(value && !/^#[0-9A-Fa-f]{6}$/.test(value)){
-            setFieldErrors((prev) => ({...prev, color: "Color inválido. Ej: #ff0000"}))
-        }
+    return () => {
+      link.remove();
+    };
+  }, [selectedFont]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    //1. Reset de mensajes (cada intento es como una partida nueva)
+    setSubmitResult(null);
+    setFormError(null);
+    setFieldErrors({});
+
+    //2. Validación mínima frontend
+    const localErrors = {};
+    if (!selectedFont?.family) localErrors.font = "Por favor, selecciona una tipografía válida.";
+    if (!color || !/^#[0-9A-Fa-f]{6}$/.test(color)) localErrors.color = "Color inválido. Ej: #ff0000";
+
+    if (image) {
+      if (!image.type.startsWith("image/"))
+        localErrors.image = "Archivo no válido. Por favor, selecciona una imagen.";
+      if (image.size > 512 * 1024)
+        localErrors.image = "La imagen supera el tamaño máximo permitido (512kB)";
     }
 
-    const handleCancelButton = () => {
-        console.log("rehidration")
-        loadStyles() // recarga la configuración desde el backend, descartando cambios no guardados
+    if (Object.keys(localErrors).length > 0) {
+      setFieldErrors(localErrors);
+      return;
     }
 
-        return(
-            <form onSubmit={handleSubmit}>
-                <header>
-                    <button type="button" onClick={handleCancelButton}>Cancelar</button>
-                    <button type="submit">Guardar</button>
-                </header>
-                
-                {formError && <p style={{color:"red"}}>{formError}</p>}
-                <div>
-                    <label>Color de fondo:</label>
-                    <input
-                        type="color"
-                        value={color}
-                        onChange={(e)=>{
-                            setColor(e.target.value)
-                            clearFieldErrors("color")
-                        }}
-                    >
-                    </input>
-                    <input 
-                        type="text"
-                        placeholder="Ej: #ffffff"
-                        value={color}
-                        onChange={handleTextColorChange}
-                    >
-                    </input>
-                    {fieldErrors.color && <p style={{color:"red"}}>{fieldErrors.color}</p>}
-                </div>
-                
-                <div>
-                    <label>Subir imagen:</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                            const file = e.target.files[0]
+    // 3. Construir formData
+    const stylesFormData = new FormData();
+    stylesFormData.append("color", color);
+    if (image) stylesFormData.append("image", image);
+    if (selectedFont) stylesFormData.append("font", selectedFont.family);
 
-                            if (!file) return
-                            
+    //4. Submit
+    const startTime = Date.now();
+    setIsSubmitting(true);
 
-                            if (!file.type.startsWith("image/")){
-                                setFieldErrors(prev => ({...prev, image: "Archivo no válido. Por favor, selecciona una imagen."}))
-                                setImage(null)
-                                setImagePreview("")
-                                e.target.value = ""; 
-                                return
-                            }
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/styles`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        body: stylesFormData,
+      });
 
-                            if(file.size > 512*1024){
-                                setFieldErrors(prev => ({...prev, image: "La imagen supera el tamaño máximo permitido (512kB)"}))
-                                setImage(null)
-                                setImagePreview("")
-                                e.target.value = ""; 
-                                return
-                            }
-                            clearFieldErrors("image")
+      const data = await res.json().catch(() => ({}));
 
-                            setImage(file)
-                            console.log("After valid select, fieldErrors.image =", fieldErrors.image);
-                            setImagePreview((prev) => {
-                                if(prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
-                                return URL.createObjectURL(file)
-                            })
-                        }
+      if (res.status === 422) {
+        setFieldErrors(mapLaravelFieldErrors(data.errors));
+        return;
+      }
+
+      if (!res.ok) {
+        setFormError(data.message ?? "Error interno del servidor");
+        return;
+      }
+
+      setSubmitResult(data.message ?? "¡Estilos guardados exitosamente!");
+
+      if (data.color) setColor(data.color);
+      if (data.font) {
+        setSelectedFont((prev) => ({ ...prev, family: data.font }));
+      }
+      if (data.image_url) {
+        setImagePreview((prev) => {
+          if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+          return data.image_url;
+        });
+        setImage(null);
+      }
+    } catch (err) {
+      setFormError("Error de red");
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, MIN_SUBMIT_TIME - elapsed);
+      setTimeout(() => setIsSubmitting(false), remaining);
+    }
+  };
+
+  const handleTextColorChange = (e) => {
+    const value = e.target.value;
+    setColor(value);
+    clearFieldErrors("color");
+
+    if (value && !/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setFieldErrors((prev) => ({ ...prev, color: "Color inválido. Ej: #ff0000" }));
+    }
+  };
+
+  const handleRehidrationButton = () => {
+    loadStyles(); // recarga la configuración desde el backend, descartando cambios no guardados
+  };
+
+  return (
+    <div className="form-shell">
+      <header className="form-header">
+        <section className="form-header-title">
+          <i className="fa fa-paint-brush fa-fw"></i>
+          <span className="main">Estilos</span>
+        </section>
+        <section className="form-heder-actions">
+          <button
+            className="btn btn-default hidden-xs"
+            type="button"
+            onClick={handleRehidrationButton}
+          >
+            Cancelar
+          </button>
+          <button
+            className="btn btn-primary btn-primary-xs"
+            form="styles-form"
+            type="submit"
+          >
+            {isSubmitting ? "Guardando..." : "Guardar"}
+          </button>
+        </section>
+      </header>
+
+      <div className="form-scroll" style={{ position: "relative" }}>
+        {isLoading && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(255,255,255,0.7)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 999,
+              pointerEvents: "all",
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div className="spinner" />
+              <span>Cargando estilos…</span>
+            </div>
+          </div>
+        )}
+
+        <form
+          className="main-form"
+          id="styles-form"
+          onSubmit={handleSubmit}
+          style={{ opacity: isLoading ? 0.2 : 1 }}
+        >
+          {formError && (
+            <>
+              <p style={{ color: "red" }}>{formError}</p>
+              <button type="button" onClick={handleRehidrationButton}>
+                Reintentar
+              </button>
+            </>
+          )}
+
+          <div className="form-main-section">
+            <div className="settings">
+              <div className="col-md-3">
+                <label>COLOR DE BOTÓN</label>
+                <p>Añade un color para el botón de reserva</p>
+              </div>
+
+              <div className="col-md-9">
+                <strong>Color:</strong>
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(e) => {
+                    setColor(e.target.value);
+                    clearFieldErrors("color");
+                  }}
+                ></input>
+
+                <input
+                  type="text"
+                  placeholder="Ej: #ffffff"
+                  value={color}
+                  onChange={handleTextColorChange}
+                ></input>
+              </div>
+
+              {fieldErrors.color && <p style={{ color: "red" }}>{fieldErrors.color}</p>}
+            </div>
+
+
+            <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont} />
+
+            {fieldErrors.font && <p style={{ color: "red" }}>{fieldErrors.font}</p>}
+
+            <div className="settings">
+              <div className="col-md-3">
+                <label>LOGO</label>
+                <p>Sube el logo de tu negocio.</p>
+              </div>
+
+              <div className="col-md-9">
+                <strong>Imagen:</strong>
+                {imagePreview && (
+                  <img
+                    src={imagePreview}
+                    style={{ height: "200px", border: "1px solid black" }}
+                  />
+                )}
+                {fieldErrors.image && <p style={{ color: "red" }}>{fieldErrors.image}</p>}
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+
+                    if (!file) return;
+
+                    if (!file.type.startsWith("image/")) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        image: "Archivo no válido. Por favor, selecciona una imagen.",
+                      }));
+                      setImage(null);
+                      setImagePreview("");
+                      e.target.value = "";
+                      return;
                     }
-                    >
-                    </input>
-                    {fieldErrors.image && <p style={{color:"red"}}>{fieldErrors.image}</p>}
-                    {imagePreview && <img src={imagePreview} style={{height:"200px", border:"1px solid black"}}/>}
-                </div>
 
-                <FontPicker selectedFont={selectedFont} setSelectedFont={setSelectedFont}/>
-                {fieldErrors.font && <p style={{color:"red"}}>{fieldErrors.font}</p>}
-                <footer>
-                    <button type="button" onClick={handleCancelButton}>Cancelar</button>
-                    <button type="submit">{isSubmitting ? "Guardando..." : "Guardar"}</button>
-                </footer>
-                {submitResult && <p style={{color:"green"}}>{submitResult}</p>}
-            </form>
-        )
+                    if (file.size > 512 * 1024) {
+                      setFieldErrors((prev) => ({
+                        ...prev,
+                        image: "La imagen supera el tamaño máximo permitido (512kB)",
+                      }));
+                      setImage(null);
+                      setImagePreview("");
+                      e.target.value = "";
+                      return;
+                    }
+                    clearFieldErrors("image");
+
+                    setImage(file);
+                    setImagePreview((prev) => {
+                      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev);
+                      return URL.createObjectURL(file);
+                    });
+                  }}
+                ></input>
+
+                
+              </div>
+            </div>
+
+            {submitResult && <p style={{ color: "green" }}>{submitResult}</p>}
+
+            <footer className="form-footer">
+              <button
+                className="btn btn-default hidden-xs"
+                type="button"
+                onClick={handleRehidrationButton}
+              >
+                Cancelar
+              </button>
+              <button className="btn btn-primary btn-primary-xs" type="submit">
+                {isSubmitting ? "Guardando..." : "Guardar"}
+              </button>
+            </footer>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }

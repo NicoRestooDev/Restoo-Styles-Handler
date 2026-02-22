@@ -7,20 +7,27 @@ import {sidebarNav} from "../../assets/sidebar.js"
 
 export default function BackOffice(){
     return(
-        <div>
+        <div className="app-wrapper">
             <aside className="sidebar-wrap">
-                <Logo/>
+                <Link className="logo-restoo-link" title="Tu Libro de reservas inteligente. Sin comisiones."  to="/">
+                    <Logo className="logo-restoo"/>
+                </Link>
                 <section className="sidebar-nav-top">
-                    <h1>Best Burger</h1>
-                    <p>Nombre de usuario</p> {/*ADMIN//CAMARERO POR IMPLEMENTAR*/}
+                    <span className="shop-name txt-ellipsis">Best Burger</span>
+                    <div className="user-name txt-ellipsis">
+                        <span >Nico Richards</span> {/*ADMIN//CAMARERO POR IMPLEMENTAR*/}
+                        <i className="fa fa-caret-down"></i>
+                    </div>
+                    
                 </section>
                 <section className="sidebar-nav-main">
                     {sidebarNav.map((group) => (
-                        <section key={group.title}>
-                            <h2>{group.title}</h2>
+                        <section className="sidebar-nav-group" key={group.title}>
+                            <span>{group.title.toUpperCase()}</span>
                             <ul>
                                 {group.items.map((item) => (
                                     <NavItem
+                                        className="no-bullet list-unstyled"
                                         key={item.href}
                                         href={item.href}
                                         iconClass={item.iconClass}
@@ -35,11 +42,12 @@ export default function BackOffice(){
                 
                 
             </aside>
-            <main>
-                <Form/>
-            </main>
             
-            <Link to="/">Ir a la landing page a oseibar cómo quedós 💄</Link>
+            
+            <Form/>
+            
+            
+            
         </div>
     )
 }
