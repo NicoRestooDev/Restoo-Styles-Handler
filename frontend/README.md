@@ -11,7 +11,7 @@
 | Integración Google Fonts API                    | ✅ Hecho     |
 | Preview tipográfico en tiempo real              | ✅ Hecho     |
 | Validaciones básicas frontend                   | ✅ Hecho     |
-| Ajustar dropdown del buscador de fuentes        | ⏳ Pendiente |
+| Ajustar dropdown del buscador de fuentes        | ✅ Hecho     |
 | Modularizar BackOffice                          | ⏳ Pendiente |
 | Normalizar estilos (mover inline a CSS)         | ⏳ Pendiente |
 
